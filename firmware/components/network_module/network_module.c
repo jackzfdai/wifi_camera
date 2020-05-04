@@ -72,20 +72,16 @@ static int s_retry_num = 0;
 esp_err_t network_module_init()
 {
 	esp_err_t ret_val = ESP_OK;
-	printf("network init bp 1\n");
 
 	network_rcv_queue = xQueueCreateStatic(NETWORK_RCV_QUEUE_LENGTH, sizeof(network_module_cmds_t), (uint8_t*) network_rcv_buffer, &network_rcv_queue_data);
 	network_cmd_send_queue = xQueueCreateStatic(NETWORK_CMD_SEND_QUEUE_LENGTH, sizeof(network_module_cmds_t), (uint8_t*) network_cmd_send_buffer, &network_cmd_send_queue_data);
 	network_data_send_queue = xQueueCreateStatic(NETWORK_DATA_SEND_QUEUE_LENGTH, sizeof(network_module_generic_data_t), (uint8_t*) network_data_send_buffer, &network_data_send_queue_data);
 
-	printf("network init bp 2\n");
 	if(network_rcv_queue == NULL || network_cmd_send_queue == NULL || network_data_send_queue == NULL)
 	{
 		ret_val = ESP_FAIL;
 		return ret_val;
 	}
-
-	printf("Network Module queues initialized\n");
 
 	wifi_init_sta();
 //	ESP_LOGI(TAG, "free heaps after wifi init: %d\n", xPortGetFreeHeapSize());
@@ -94,7 +90,7 @@ esp_err_t network_module_init()
 	protocol_init.evt_handler = NULL;
 	ret_val = protocol_session_init(&protocol_init);
 
-	xTaskCreatePinnedToCore(network_data_send_task,"network_data_send_task",2048,NULL,NETWORK_DATA_SEND_PRIO, NULL, 0);
+	xTaskCreatePinnedToCore(network_data_send_task,"network_data_send_task",2048,NULL,NETWORK_DATA_SEND_PRIO, NULL, 1);
 	//xTaskCreatePinnedToCore(network_cmd_send_task,"network_cmd_send_task",1024,NULL,NETWORK_CMD_SEND_PRIO, NULL, 0);
 	//xTaskCreatePinnedToCore(network_rcv_task,"network_rcv_task",1024,NULL,NETWORK_RCV_PRIO, NULL, 0);
 
@@ -120,13 +116,14 @@ static void network_data_send_task(void *pvParameter)
 			ESP_LOGI(TAG, "Waiting on network ready.");
         }
 
-
+        	TickType_t frame_send_time = xTaskGetTickCount();
             protocol_send_data(data.buf, data.size);
+            frame_send_time = xTaskGetTickCount() - frame_send_time;
 
-        ESP_LOGI(TAG, "free DMA-capable heap size: %d", heap_caps_get_minimum_free_size(MALLOC_CAP_DMA));
+        ESP_LOGI(TAG, "free DMA-capable heap size: %d, frame send time %d0 ms", heap_caps_get_minimum_free_size(MALLOC_CAP_DMA), frame_send_time);
 
         //TODO: implement a back off depending on memory availability
-		vTaskDelay(100/portTICK_PERIOD_MS);
+//		vTaskDelay(50/portTICK_PERIOD_MS);
 
 		xTaskNotifyGive(camera_task);
 	}

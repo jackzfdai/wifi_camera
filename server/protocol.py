@@ -91,11 +91,12 @@ class camera:
 				index = self.frame_list.index(frame_item)
 				i = 0
 				while (i < index):
-					self.frame_list.pop([i])
+					print("index " + str(i) + "index max " + str(index) + "len " + str(len(self.frame_list)))
+					self.frame_list.pop(0) #always pop the front element of the list
 					i += 1
 					# print("Popped incomplete frame")
 				# print("Size of list " + str(len(self.frame_list)) + " popping complete frame index " + str(index))
-				completed_frame = self.frame_list.pop(index)
+				completed_frame = self.frame_list.pop(index - i) #effectively 0, as item originally at index will have been moved to front of list due to popping in while loop 
 				frame_payload = completed_frame.get_frame_data() 
 				if frame_payload != -1:
 					return frame_payload

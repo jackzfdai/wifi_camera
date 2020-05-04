@@ -62,12 +62,10 @@ esp_err_t camera_module_init()
         .frame_size = FRAMESIZE_QQVGA, /*FRAMESIZE_QVGA,*/     //QQVGA-QXGA Do not use sizes above QVGA when not JPEG
 
         .jpeg_quality = 12, //0-63 lower number means higher quality
-        .fb_count = 1 //if more than one, i2s runs in continuous mode. Use only with JPEG
+        .fb_count = 2 //if more than one, i2s runs in continuous mode. Use only with JPEG
     };
-	printf("bp 5 s state %p\n", get_s_state());
 
     ESP_ERROR_CHECK(esp_camera_init(&camera_config));
-	printf("cam init bp 1\n");
 
     xTaskCreatePinnedToCore(camera_module_task, "camera_module_task", 2048, NULL, CAMERA_TASK_PRIO, &camera_task, 1);
 //	camera_task = xTaskCreateStaticPinnedToCore(camera_module_task, "camera_module_task", CAMERA_MODULE_TASK_SIZE, NULL, CAMERA_TASK_PRIO, (StackType_t*)camera_task_stack, (StaticTask_t*) &camera_task_buffer, 1);
@@ -87,7 +85,9 @@ static void camera_module_task(void *pv_parameter)
 
 	while(1)
 	{
+        TickType_t fb_get_time = xTaskGetTickCount();
 	    camera_fb_t * fb = esp_camera_fb_get();
+	    fb_get_time = xTaskGetTickCount() - fb_get_time;
 	    if (fb == NULL)	//if fb is null -> send err event to fsm handle
 	    {
 	    	hsm_send_evt_urgent(&hsm_system_mgmt, EVENT_FAULT, portMAX_DELAY);
@@ -96,10 +96,10 @@ static void camera_module_task(void *pv_parameter)
 	    }
 
 	    esp_err_t jpeg_ret_code;
-        TickType_t temp = xTaskGetTickCount();
+        TickType_t jpeg_enc_time = xTaskGetTickCount();
 	    jpeg_encode(fb->buf, fb->len, fb->width, fb->height, &frame_jpeg);
-        temp = xTaskGetTickCount() - temp;
-        ESP_LOGI(TAG, "jpeg encoding took %d ms, the file size is %d", temp, frame_jpeg.buf_written_size);
+        jpeg_enc_time = xTaskGetTickCount() - jpeg_enc_time;
+        ESP_LOGI(TAG, "fb get took %d0 ms, jpeg encoding took %d0 ms, the file size is %d", fb_get_time, jpeg_enc_time, frame_jpeg.buf_written_size);
 
 //	    if (test_val == 0)
 //	    {

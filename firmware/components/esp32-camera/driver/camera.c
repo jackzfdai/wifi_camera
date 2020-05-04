@@ -151,6 +151,9 @@ static void i2s_stop(bool* need_yield);
 volatile TickType_t ticks = 0;
 #endif
 
+//TickType_t fb_start_time = 0;
+//TickType_t fb_stop_time = 0;
+
 static bool is_hs_mode()
 {
     return s_state->config.xclk_freq_hz > 10000000;
@@ -477,6 +480,8 @@ static void IRAM_ATTR i2s_start_bus()
     if (s_state->config.pixel_format == PIXFORMAT_JPEG) {
         vsync_intr_enable();
     }
+
+//    fb_start_time = xTaskGetTickCount();
 }
 
 static int i2s_run()
@@ -617,6 +622,8 @@ static void IRAM_ATTR camera_fb_done()
         xSemaphoreGive(s_state->frame_ready);
         return;
     }
+//    fb_stop_time = xTaskGetTickCount();
+//    fb_start_time = fb_stop_time;
 
     fb = s_state->fb;
     if(!fb->ref && fb->len) {
