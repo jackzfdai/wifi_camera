@@ -31,7 +31,7 @@ void app_main()
 
 	ESP_ERROR_CHECK(system_mgmt_init(NULL)); // , NULL));
 	vTaskDelay(pdMS_TO_TICKS(100));
-	//xTaskCreatePinnedToCore(stats_task,"stats task",4096,NULL,8, NULL, 1);
+//	xTaskCreatePinnedToCore(stats_task,"stats task",4096,NULL,8, NULL, 1);
 	vTaskDelay(pdMS_TO_TICKS(100));
 //    printf("insufficient ram");
 //    for (int i = 10; i >= 0; i--) {
@@ -41,9 +41,6 @@ void app_main()
 //    printf("Restarting now.\n");
 //    fflush(stdout);
 //    esp_restart();
-
-	short test = 0;
-	test = 1;
 
 	while(1)
 	{
@@ -75,7 +72,7 @@ static void stats_task(void * pvParam)
 	    {
 	    	char task_stat [24] = "\0";
 	    	task_state_to_string(task_stat_array[i].eCurrentState, task_stat);
-	    	printf(" %19s | %11s | %15p | %15d | %7d | %10d \n", task_stat_array[i].pcTaskName, task_stat, task_stat_array[i].pxStackBase, task_stat_array[i].usStackHighWaterMark, task_stat_array[i].xCoreID, task_stat_array[i].ulRunTimeCounter/total_runtime * 100);
+	    	printf(" %19s | %11s | %15p | %15d | %7d | %10d \n", task_stat_array[i].pcTaskName, task_stat, task_stat_array[i].pxStackBase, task_stat_array[i].usStackHighWaterMark, task_stat_array[i].xCoreID, task_stat_array[i].ulRunTimeCounter*100/total_runtime );
 	    }
 
 	    printf("\n");
