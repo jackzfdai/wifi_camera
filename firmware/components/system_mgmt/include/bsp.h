@@ -1,0 +1,3 @@
+#define LIGHT_SENSE_PIN				ADC1_CHANNEL_0
+#define IR_BANK_1_EN_PIN			2
+#define IR_BANK_2_EN_PIN			3

@@ -1,0 +1,101 @@
+menu "Camera Project High Level Configuration"
+      
+config XCLK_FREQ
+    int "XCLK Frequency"
+    default "20000000"
+    help
+        The XCLK Frequency in Herz.
+
+config JPEG_BUF_SIZE_MAX
+    int "JPEG Buffer Max Size"
+    default "10000"
+    help   
+        The buffer statically allocated for JPEG write. Written JPEG file must be <= this size. 
+
+menu "Pin Configuration"
+    config D0
+        int "D0"
+        default "4"
+    config D1
+        int "D1"
+        default "5"
+    config D2
+        int "D2"
+        default "18"
+    config D3
+        int "D3"
+        default "19"
+    config D4
+        int "D4"
+        default "36"
+    config D5
+        int "D5"
+        default "39"
+    config D6
+        int "D6"
+        default "34"
+    config D7
+        int "D7"
+        default "35"
+    config XCLK
+        int "XCLK"
+        default "21"
+    config PCLK
+        int "PCLK"
+        default "22"
+    config VSYNC
+        int "VSYNC"
+        default "25"
+    config HREF
+        int "HREF"
+        default "23"
+    config SDA
+        int "SDA"
+        default "26"
+    config SCL
+        int "SCL"
+        default "27"
+    config RESET
+        int "RESET"
+        default "2"
+endmenu
+
+endmenu
+
+menu "UDP Client Configuration"
+
+    config HOST_IP_ADDR
+        string "IPV4 Address"
+        default "192.168.0.165"
+        help
+            IPV4 address to which the client example will send data.
+
+    config PORT
+        int "Port"
+        range 0 65535
+        default 3333
+        help
+            The remote port to which the client example will send data.
+
+endmenu
+
+menu "Wifi Connection Configuration"
+
+    config ESP_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) for to connect to.
+
+    config ESP_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2) to use.
+
+    config ESP_MAXIMUM_RETRY
+        int "Maximum retry"
+        default 5
+        help
+            Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.
+endmenu
