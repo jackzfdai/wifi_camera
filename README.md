@@ -1,2 +1,2 @@
-# iot_camera_r1
-ESP32 based connected camera, includes PCB files and code.
+# wifi_camera
+ESP32 based connected camera, includes PCB files, ESP32 code, and a Python server for receiving the video stream.
