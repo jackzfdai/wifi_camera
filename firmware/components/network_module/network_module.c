@@ -31,7 +31,6 @@
 
 #include "protocol.h"
 
-
 /*---------private functions----------*/
 static void network_data_send_task(void *pvParameter);
 //static void network_cmd_send_task();
@@ -97,6 +96,24 @@ esp_err_t network_module_init()
 	return ret_val;
 }
 
+void protocol_evt_handler(protocol_evt_t evt)
+{
+	switch(evt)
+	{
+	case PROTOCOL_EVT_SESSION_STARTED:
+		//permit data sending
+		break;
+	case PROTOCOL_EVT_SESSION_ENDED:
+		break;
+	case PROTOCOL_EVT_STREAM_RQST:
+		break;
+	case PROTOCOL_EVT_STREAM_STOP:
+		break;
+	default:
+		break;
+	}
+}
+
 static void network_data_send_task(void *pvParameter)
 {
 	static TickType_t frame_tick = 0;
@@ -129,6 +146,22 @@ static void network_data_send_task(void *pvParameter)
 	}
 }
 
+//static void network_session_ctrl_task (void *pvParameter)
+//{
+//	while (!(xEventGroupGetBits(s_wifi_event_group) & WIFI_CONNECTED_BIT))
+//	{
+//		vTaskDelay(500/portTICK_PERIOD_MS);
+//	}
+//
+//	while (1)
+//	{
+//
+//		protocol_init_t protocol_init;
+//		protocol_init.evt_handler = NULL;
+//		protocol_session_init(&protocol_init);
+//	}
+//}
+
 //static void network_cmd_send_task(void *pvParameter)
 //{
 //	while(1)
@@ -141,7 +174,23 @@ static void network_data_send_task(void *pvParameter)
 //{
 //	while(1)
 //	{
+//		//receive frm network
 //
+//		struct sockaddr_in source_addr; // Large enough for both IPv4 or IPv6
+//		socklen_t socklen = sizeof(source_addr);
+//		int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+//
+//		// Error occurred during receiving
+//		if (len < 0) {
+//			ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
+//			break;
+//		}
+//		// Data received
+//		else {
+//			rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
+//			ESP_LOGI(TAG, "Received %d bytes from %s:", len, addr_str);
+//			ESP_LOGI(TAG, "%s", rx_buffer);
+//		}
 //	}
 //}
 

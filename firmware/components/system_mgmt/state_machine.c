@@ -36,7 +36,6 @@ static esp_err_t hsm_process_event(hsm_handle_t *handle, event_t event);
  --------------------------------------------------------------------------------------------------*/
 esp_err_t hsm_init(hsm_init_t *init, hsm_handle_t *handle, hsm_handle_t *super_state_hsm)//, state_t *super_state)
 {
-	printf("hsm init");
 	esp_err_t ret_code = ESP_FAIL;
 
 	if (init == NULL || handle == NULL || init->STATE_DISABLE == NULL)
@@ -82,8 +81,6 @@ esp_err_t hsm_init(hsm_init_t *init, hsm_handle_t *handle, hsm_handle_t *super_s
 	handle->state = handle->init.STATE_DISABLE;
 	//handle->super_state = super_state;
 	handle->super_hsm = super_state_hsm;
-
-	printf("about to get queue\n");
 //	if (init->max_num_events > init->event_item_size)
 
 //	handle->event_queue_handle = xQueueCreate(init->max_num_events, // The number of items the queue can hold.
