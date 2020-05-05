@@ -85,7 +85,7 @@ esp_err_t protocol_send_data(void * buf, uint32_t len)
 	packet.frame_type = PROTOCOL_DATA_PKT;
 	packet.pkt_sequence = 1;
 	packet.total_packets = (len - 1)/PROTOCOL_MAX_PAYLOAD_SIZE + 1;
-//	packet.local_timestamp_ms = xTaskGetTickCount(); //this is not ms
+	packet.local_timestamp_ms = xTaskGetTickCount() * 10; //resolution is 10ms since freertos tick is set to 100hz
 
 	uint32_t bytes_remaining = len;
 	uint32_t payload_data_index = 0;
@@ -190,3 +190,11 @@ static esp_err_t udp_client_send(void* payload, size_t size)
 //		(uint8_t *) frame_buffer[i] = header->val[i];
 //	}
 //}
+
+static void protocol_session_ctrl_task(void * pvParameters)
+{
+	while(1)
+	{
+
+	}
+}

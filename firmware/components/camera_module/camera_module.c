@@ -62,7 +62,7 @@ esp_err_t camera_module_init()
         .frame_size = FRAMESIZE_QQVGA, /*FRAMESIZE_QVGA,*/     //QQVGA-QXGA Do not use sizes above QVGA when not JPEG
 
         .jpeg_quality = 12, //0-63 lower number means higher quality
-        .fb_count = 2 //if more than one, i2s runs in continuous mode. Use only with JPEG
+        .fb_count = 1 //if more than one, i2s runs in continuous mode. Use only with JPEG
     };
 
     ESP_ERROR_CHECK(esp_camera_init(&camera_config));
