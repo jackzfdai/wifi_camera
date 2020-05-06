@@ -89,7 +89,7 @@ esp_err_t network_module_init()
 	protocol_init.evt_handler = NULL;
 	ret_val = protocol_session_init(&protocol_init);
 
-	xTaskCreatePinnedToCore(network_data_send_task,"network_data_send_task",2048,NULL,NETWORK_DATA_SEND_PRIO, NULL, 1);
+	xTaskCreatePinnedToCore(network_data_send_task,"network_data_send_task",2048,NULL,NETWORK_DATA_SEND_PRIO, NULL, 0);
 	//xTaskCreatePinnedToCore(network_cmd_send_task,"network_cmd_send_task",1024,NULL,NETWORK_CMD_SEND_PRIO, NULL, 0);
 	//xTaskCreatePinnedToCore(network_rcv_task,"network_rcv_task",1024,NULL,NETWORK_RCV_PRIO, NULL, 0);
 

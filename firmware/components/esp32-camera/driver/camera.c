@@ -455,9 +455,9 @@ static void i2s_init()
     printf("right before esp intr alloc\n");
 
     // Allocate I2S interrupt, keep it disabled
-    esp_intr_alloc(ETS_I2S0_INTR_SOURCE,
-                   ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_IRAM,
-                   &i2s_isr, NULL, &s_state->i2s_intr_handle);
+//    esp_intr_alloc(ETS_I2S0_INTR_SOURCE,
+//                   ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_IRAM,
+//                   &i2s_isr, NULL, &s_state->i2s_intr_handle);
 }
 
 static void IRAM_ATTR i2s_start_bus()
@@ -762,18 +762,17 @@ static void IRAM_ATTR dma_filter_buffer(size_t buf_idx)
 
 static void IRAM_ATTR dma_filter_task(void *pvParameters)
 {
+    esp_intr_alloc(ETS_I2S0_INTR_SOURCE,
+                   ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_IRAM,
+                   &i2s_isr, NULL, &s_state->i2s_intr_handle); //allocate interrupt in the task for now to allocate interrupt on the same core
     s_state->dma_filtered_count = 0;
     while (true) {
         size_t buf_idx;
         if(xQueueReceive(s_state->data_ready, &buf_idx, portMAX_DELAY) == pdTRUE) {
             if (buf_idx == SIZE_MAX) {
                 //this is the end of the frame
-            	TickType_t temp = xTaskGetTickCount();
-//            	printf("ms since last frame: %d\n", (temp - ticks)*portTICK_PERIOD_MS);
-            	ticks = temp;
                 dma_finish_frame();
             } else {
-//            	printf("buf idx not dn %d", buf_idx);
                 dma_filter_buffer(buf_idx);
             }
         }
@@ -1340,9 +1339,9 @@ esp_err_t camera_init(const camera_config_t* config)
 
     //ToDo: core affinity?
 #if CONFIG_CAMERA_CORE0
-    if (!xTaskCreatePinnedToCore(&dma_filter_task, "dma_filter", 4096, NULL, 10, &s_state->dma_filter_task, 0))
+    if (!xTaskCreatePinnedToCore(&dma_filter_task, "dma_filter", 4096, NULL, 16, &s_state->dma_filter_task, 0))
 #elif CONFIG_CAMERA_CORE1
-    if (!xTaskCreatePinnedToCore(&dma_filter_task, "dma_filter", 4096, NULL, 10, &s_state->dma_filter_task, 1))
+    if (!xTaskCreatePinnedToCore(&dma_filter_task, "dma_filter", 4096, NULL, 16, &s_state->dma_filter_task, 1))
 #else
     if (!xTaskCreate(&dma_filter_task, "dma_filter", 4096, NULL, 10, &s_state->dma_filter_task))
 #endif
