@@ -12,6 +12,12 @@ config JPEG_BUF_SIZE_MAX
     help   
         The buffer statically allocated for JPEG write. Written JPEG file must be <= this size. 
 
+config NUM_JPEG_BUFFERS
+    int "Number of JPEG buffers"
+    default "2"
+    help
+        How many JPEG buffers to allocate. 
+
 menu "Pin Configuration"
     config D0
         int "D0"
