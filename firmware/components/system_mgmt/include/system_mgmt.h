@@ -17,7 +17,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 
-#include "state_machine.h"
+#include "state_machine_old.h"
 
 /*-------------------------------------------------------------------------------------------------
  * Defines

@@ -8,6 +8,7 @@
 /*-------------------------------------------------------------------------------------------------
  * Includes
  --------------------------------------------------------------------------------------------------*/
+#include <state_machine_old.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -17,7 +18,6 @@
 #include "freertos/task.h"
 #include "driver/adc.h"
 
-#include "state_machine.h"
 #include "bsp.h"
 #include "system_mgmt.h"
 #include "camera_module.h"

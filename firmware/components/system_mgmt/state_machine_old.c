@@ -8,6 +8,8 @@
 /*-------------------------------------------------------------------------------------------------
  * Includes
  --------------------------------------------------------------------------------------------------*/
+#include "include/state_machine_old.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -17,7 +19,6 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
-#include "state_machine.h"
 #include "bsp.h"
 /*-------------------------------------------------------------------------------------------------
  * Defines
