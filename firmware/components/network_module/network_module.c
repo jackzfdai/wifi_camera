@@ -13,7 +13,7 @@
 #include "system_mgmt.h"
 #include "camera_module.h"
 
-#include "esp_camera.h" //temp
+//#include "esp_camera.h" //temp
 
 #include "tcpip_adapter.h"
 
@@ -116,33 +116,42 @@ void protocol_evt_handler(protocol_evt_t evt)
 
 static void network_data_send_task(void *pvParameter)
 {
-	static TickType_t frame_tick = 0;
-	static const char *payload = "Message from ESP32 ";
-
 	while(1)
 	{
-		network_module_generic_data_t data;
-		xQueueReceive(network_data_send_queue, (void *) &data, portMAX_DELAY);
-
-        TickType_t temp = xTaskGetTickCount();
-        frame_tick = temp;
-
         while(!network_ready)
         {
 			vTaskDelay(200/portTICK_PERIOD_MS);
 			ESP_LOGI(TAG, "Waiting on network ready.");
         }
 
-        	TickType_t frame_send_time = xTaskGetTickCount();
-            protocol_send_data(data.buf, data.size);
-            frame_send_time = xTaskGetTickCount() - frame_send_time;
+//		network_module_generic_data_t data;
+//		xQueueReceive(network_data_send_queue, (void *) &data, portMAX_DELAY);
+
+        void * buf = NULL;
+        uint32_t size = 0;
+        esp_err_t ret_val = camera_get_jpeg(&buf, &size, portMAX_DELAY);
+        if (ret_val != ESP_OK)
+        {
+        	ESP_LOGE(TAG, "Frame get error.");
+        	continue;
+        }
+
+		TickType_t frame_send_time = xTaskGetTickCount();
+		protocol_send_data(buf, size);
+		frame_send_time = xTaskGetTickCount() - frame_send_time;
 
         ESP_LOGI(TAG, "free DMA-capable heap size: %d, frame send time %d0 ms", heap_caps_get_minimum_free_size(MALLOC_CAP_DMA), frame_send_time);
 
         //TODO: implement a back off depending on memory availability
 //		vTaskDelay(50/portTICK_PERIOD_MS);
+        ret_val = camera_return_jpeg(buf);
+        if (ret_val != ESP_OK)
+        {
+        	ESP_LOGE(TAG, "Frame return error.");
+        	continue;
+        }
 
-		xTaskNotifyGive(camera_task);
+//		xTaskNotifyGive(camera_task);
 	}
 }
 
