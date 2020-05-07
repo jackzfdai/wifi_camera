@@ -182,7 +182,7 @@ static state_id_t state_camera_active (event_t event)
 	case EVENT_STATE_ENTRY:
 		//startup tasks - set things to 0
 		//send startup complete
-		xTaskNotifyGive(camera_task);
+//		xTaskNotifyGive(camera_task);
 		printf("CAMERA ACTIVE\n");
 		//start task monitor brightness
 		//if success
