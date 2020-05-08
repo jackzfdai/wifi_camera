@@ -31,11 +31,11 @@
 /*-------------------------------------------------------------------------------------------------
  * Private Function Declarations
  --------------------------------------------------------------------------------------------------*/
-static esp_err_t hsm_process_event(hsm_handle_t *handle, event_t event);
+static esp_err_t hsm_process_event(hsm_handle_t *handle, event_old_t event);
 /*-------------------------------------------------------------------------------------------------
  * Public Function Definitions
  --------------------------------------------------------------------------------------------------*/
-esp_err_t hsm_init(hsm_init_t *init, hsm_handle_t *handle, hsm_handle_t *super_state_hsm)//, state_t *super_state)
+esp_err_t hsm_init(hsm_init_t *init, hsm_handle_t *handle, hsm_handle_t *super_state_hsm)//, state_old_t *super_state)
 {
 	esp_err_t ret_code = ESP_FAIL;
 
@@ -85,10 +85,10 @@ esp_err_t hsm_init(hsm_init_t *init, hsm_handle_t *handle, hsm_handle_t *super_s
 //	if (init->max_num_events > init->event_item_size)
 
 //	handle->event_queue_handle = xQueueCreate(init->max_num_events, // The number of items the queue can hold.
-//	                         sizeof(event_t));
+//	                         sizeof(event_old_t));
 
 	handle->event_queue_handle = xQueueCreateStatic(init->max_num_events, // The number of items the queue can hold.
-	                         sizeof(event_t),     // The size of each item in the queue
+	                         sizeof(event_old_t),     // The size of each item in the queue
 	                         handle->init.event_queue_buffer, // The buffer that will hold the items in the queue.
 	                         &handle->init.event_queue); //buffer to hold queue structure
 
@@ -110,7 +110,7 @@ esp_err_t hsm_init(hsm_init_t *init, hsm_handle_t *handle, hsm_handle_t *super_s
 void hsm_task(hsm_handle_t *handle)
 {
 	static uint32_t count = 0;
-	event_t event;
+	event_old_t event;
 	while(1)
 	{
 		count++;
@@ -140,7 +140,7 @@ state_id_t hsm_get_state(hsm_handle_t *handle)
 	return handle->state->id;
 }
 
-esp_err_t hsm_send_evt(hsm_handle_t *handle, event_t event, uint32_t timeout_ms)
+esp_err_t hsm_send_evt(hsm_handle_t *handle, event_old_t event, uint32_t timeout_ms)
 {
 //	printf("handle send in hsm send evt%p\n", handle->event_queue_handle);
 	if (handle->event_queue_handle == NULL)
@@ -158,7 +158,7 @@ esp_err_t hsm_send_evt(hsm_handle_t *handle, event_t event, uint32_t timeout_ms)
 	return ESP_OK;
 }
 
-esp_err_t hsm_send_evt_urgent(hsm_handle_t *handle, event_t event, uint32_t timeout_ms)
+esp_err_t hsm_send_evt_urgent(hsm_handle_t *handle, event_old_t event, uint32_t timeout_ms)
 {
 	printf("bp 1.1\n");
 	if (handle->event_queue_handle == NULL)
@@ -174,7 +174,7 @@ esp_err_t hsm_send_evt_urgent(hsm_handle_t *handle, event_t event, uint32_t time
 	return ESP_OK;
 }
 
-esp_err_t hsm_send_evt_isr(hsm_handle_t *handle, event_t event)
+esp_err_t hsm_send_evt_isr(hsm_handle_t *handle, event_old_t event)
 {
 	if (handle->event_queue_handle == NULL)
 			return ESP_FAIL;
@@ -190,7 +190,7 @@ esp_err_t hsm_send_evt_isr(hsm_handle_t *handle, event_t event)
 	return ESP_OK;
 }
 
-esp_err_t hsm_send_evt_urgent_isr(hsm_handle_t *handle, event_t event)
+esp_err_t hsm_send_evt_urgent_isr(hsm_handle_t *handle, event_old_t event)
 {
 	if (handle->event_queue_handle == NULL)
 			return ESP_FAIL;
@@ -206,7 +206,7 @@ esp_err_t hsm_send_evt_urgent_isr(hsm_handle_t *handle, event_t event)
 	return ESP_OK;
 }
 
-uint8_t hsm_state_table_find_state(state_id_t id, state_t *state_table)
+uint8_t hsm_state_table_find_state(state_id_t id, state_old_t *state_table)
 {
 	assert(state_table != NULL);
 
@@ -223,13 +223,13 @@ uint8_t hsm_state_table_find_state(state_id_t id, state_t *state_table)
 /*-------------------------------------------------------------------------------------------------
  * Private Function Definitions
  --------------------------------------------------------------------------------------------------*/
-static esp_err_t hsm_process_event(hsm_handle_t *handle, event_t event)
+static esp_err_t hsm_process_event(hsm_handle_t *handle, event_old_t event)
 {
 	esp_err_t ret_code;
 
-//	state_t * new_state;
+//	state_old_t * new_state;
 	state_id_t new_state_id = handle->init.STATE_ID_ANY;
-//	transition_t *transitions = handle->init.transitions;
+//	transition_old_t *transitions = handle->init.transitions;
 
 	//printf("bp 1\n");
 

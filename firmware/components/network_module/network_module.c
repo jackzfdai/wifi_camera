@@ -30,6 +30,9 @@
 #include "esp_log.h"
 
 #include "protocol.h"
+#include "state_machine.h"
+
+#define NETWORK_FSM_QUEUE_LEN		10
 
 /*---------private functions----------*/
 static void network_data_send_task(void *pvParameter);
@@ -66,11 +69,59 @@ static const char *TAG_WIFI_STATION = "wifi station";
 
 static int s_retry_num = 0;
 
+static void network_ctrl_task(void * parameters);
+
+static void protocol_send_session_rqst_response(void);
+static void protocol_session_start(void);
+static void protocol_session_keepalive(void);
+static void protocol_session_end(void);
+static void protocol_start_stream(void);
+static void protocol_end_stream(void);
+
+transition_t protocol_transitions[] =
+		{
+				{STATE_NOT_CONNECTED, EVENT_SESSION_RQST, STATE_CONNECTING, &protocol_send_session_rqst_response},
+				{STATE_CONNECTING, EVENT_SESSION_RQST_TIMEOUT, STATE_NOT_CONNECTED, NULL},
+				{STATE_CONNECTING, EVENT_SESSION_KEEPALIVE, STATE_CONNECTED, &protocol_session_start},
+				{STATE_CONNECTED, EVENT_SESSION_KEEPALIVE, STATE_CONNECTED, &protocol_session_keepalive},
+				{STATE_CONNECTED, EVENT_SESSION_TIMEOUT, STATE_NOT_CONNECTED, &protocol_session_end},
+				{STATE_CONNECTED, EVENT_SESSION_END, STATE_NOT_CONNECTED, &protocol_session_end},
+				{STATE_CONNECTED, EVENT_STREAM_START_RQST, STATE_STREAMING, &protocol_start_stream},
+				{STATE_STREAMING, EVENT_STREAM_STOP_RQST, STATE_CONNECTED, &protocol_end_stream},
+				{STATE_STREAMING, EVENT_ERROR, STATE_CONNECTED, &protocol_end_stream},
+				{STATE_STREAMING, EVENT_SESSION_TIMEOUT, STATE_NOT_CONNECTED, &protocol_session_end},
+				{STATE_STREAMING, EVENT_SESSION_END, STATE_NOT_CONNECTED, &protocol_session_end}
+		};
+
+static StaticQueue_t network_fsm_queue_data;
+static event_t network_fsm_queue_buffer[NETWORK_FSM_QUEUE_LEN];
+
+static fsm_handle_t network_fsm;
+
 /*------------------------------------*/
 
 esp_err_t network_module_init()
 {
 	esp_err_t ret_val = ESP_OK;
+
+//	network_fsm_queue = xQueueCreateStatic(NETWORK_FSM_QUEUE_LEN, sizeof(event_t), (uint8_t*) network_fsm_queue_buffer, &network_fsm_queue_data);
+	fsm_init_t network_fsm_init;
+	network_fsm_init.FSM_LOG_TAG = TAG;
+	network_fsm.init.STATE_DEFAULT = STATE_NOT_CONNECTED;
+	network_fsm.init.STATE_ID_ANY = STATE_GENERIC;
+	network_fsm_init.event_queue_data = network_fsm_queue_data;
+	network_fsm_init.event_queue_buffer = network_fsm_queue_buffer;
+	network_fsm_init.event_queue_len = NETWORK_FSM_QUEUE_LEN;
+	network_fsm_init.transition_table = protocol_transitions;
+	network_fsm_init.transition_table_size = TRANSITION_COUNT(protocol_transitions);
+	network_fsm_init.task_core = 0;
+
+	ret_val = fsm_init(&network_fsm_init, &network_fsm);
+	if (ret_val != ESP_OK)
+	{
+		ESP_LOGE(TAG, "Network state machine init failed.");
+		return ret_val;
+	}
 
 	network_rcv_queue = xQueueCreateStatic(NETWORK_RCV_QUEUE_LENGTH, sizeof(network_module_cmds_t), (uint8_t*) network_rcv_buffer, &network_rcv_queue_data);
 	network_cmd_send_queue = xQueueCreateStatic(NETWORK_CMD_SEND_QUEUE_LENGTH, sizeof(network_module_cmds_t), (uint8_t*) network_cmd_send_buffer, &network_cmd_send_queue_data);
@@ -96,21 +147,25 @@ esp_err_t network_module_init()
 	return ret_val;
 }
 
-void protocol_evt_handler(protocol_evt_t evt)
+
+
+static void network_ctrl_task (void * parameter)
 {
-	switch(evt)
+	while(1)
 	{
-	case PROTOCOL_EVT_SESSION_STARTED:
-		//permit data sending
-		break;
-	case PROTOCOL_EVT_SESSION_ENDED:
-		break;
-	case PROTOCOL_EVT_STREAM_RQST:
-		break;
-	case PROTOCOL_EVT_STREAM_STOP:
-		break;
-	default:
-		break;
+		switch(network_fsm.curr_state)
+		{
+		case STATE_NOT_CONNECTED:
+			break;
+		case STATE_CONNECTING:
+			break;
+		case STATE_CONNECTED:
+			break;
+		case STATE_STREAMING:
+			break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -153,6 +208,54 @@ static void network_data_send_task(void *pvParameter)
 
 //		xTaskNotifyGive(camera_task);
 	}
+}
+
+void protocol_evt_handler(protocol_evt_t evt)
+{
+	switch(evt)
+	{
+	case PROTOCOL_EVT_SESSION_STARTED:
+		//permit data sending
+		break;
+	case PROTOCOL_EVT_SESSION_ENDED:
+		break;
+	case PROTOCOL_EVT_STREAM_RQST:
+		break;
+	case PROTOCOL_EVT_STREAM_STOP:
+		break;
+	default:
+		break;
+	}
+}
+
+static void protocol_send_session_rqst_response(void)
+{
+	return;
+}
+
+static void protocol_session_start(void)
+{
+	return;
+}
+
+static void protocol_session_keepalive(void)
+{
+	return;
+}
+
+static void protocol_session_end(void)
+{
+	return;
+}
+
+static void protocol_start_stream(void)
+{
+	return;
+}
+
+static void protocol_end_stream(void)
+{
+	return;
 }
 
 //static void network_session_ctrl_task (void *pvParameter)

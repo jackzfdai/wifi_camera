@@ -18,7 +18,6 @@
 /*-------------------------------------------------------------------------------------------------
  * Typedefs
  --------------------------------------------------------------------------------------------------*/
-typedef struct fsm_handle_s fsm_handle_t;
 typedef uint32_t state_t;
 typedef uint32_t event_t;
 
@@ -27,7 +26,7 @@ typedef struct
 	state_t curr_state;
 	event_t event;
 	state_t new_state;
-	esp_err_t (*transition_fn)(void);
+	void (*transition_fn)(void); //add error handling?
 } transition_t;
 
 //struct to hold init properties of fsm
@@ -35,30 +34,30 @@ typedef struct
 {
 	const char * FSM_LOG_TAG;
 
-	StaticQueue_t event_queue;
+	StaticQueue_t event_queue_data;
 	event_t *event_queue_buffer;
-	uint32_t event_queue_size;
+	uint32_t event_queue_len;
 
 	state_t STATE_DEFAULT; //default state when first initialized
 	state_t STATE_ID_ANY; //used when current state has no action for the event/event is unknown
 
 	transition_t * transition_table;
 	uint32_t transition_table_size;
+
+	BaseType_t task_core;
 } fsm_init_t;
 
-struct fsm_handle_s
+typedef struct
 {
 	state_t curr_state;
 	QueueHandle_t event_queue_handle;
 	fsm_init_t init;
-};
+} fsm_handle_t;
 
 /*-------------------------------------------------------------------------------------------------
  * Function Declarations
  --------------------------------------------------------------------------------------------------*/
 esp_err_t fsm_init(fsm_init_t *init, fsm_handle_t *handle); //, state_t *super_state);
-
-void fsm_task(fsm_handle_t *fsm);
 
 state_t fsm_get_state(fsm_handle_t *fsm);
 
