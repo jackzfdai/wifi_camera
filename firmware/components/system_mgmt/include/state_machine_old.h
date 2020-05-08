@@ -28,24 +28,24 @@
  * Typedefs
  --------------------------------------------------------------------------------------------------*/
 typedef struct hsm_handle_s hsm_handle_t;
-typedef struct state_s state_t;
+typedef struct state_s state_old_t;
 typedef uint8_t state_id_t;
-typedef uint8_t event_t;
+typedef uint8_t event_old_t;
 
 struct state_s
 {
 	state_id_t id;
 	//hsm_handle_t *nested_hsm;
-	state_id_t (*fn)(event_t); //state handler
+	state_id_t (*fn)(event_old_t); //state handler
 };
 
 typedef struct
 {
-	state_t state;
-	event_t event;
+	state_old_t state;
+	event_old_t event;
 
-	state_t (*fn)(event_t);
-} transition_t;
+	state_old_t (*fn)(event_old_t);
+} transition_old_t;
 
 //struct to hold init properties of hsm
 typedef struct
@@ -53,18 +53,18 @@ typedef struct
 	uint8_t max_num_events;
 //	uint8_t event_item_size;
 	StaticQueue_t event_queue;
-	event_t *event_queue_buffer;
+	event_old_t *event_queue_buffer;
 
-	state_t *STATE_DISABLE;
-//	state_t *STATE_IDLE;
+	state_old_t *STATE_DISABLE;
+//	state_old_t *STATE_IDLE;
 	state_id_t STATE_ID_ANY; //used when current state has no action for the event/event is unknown
-	event_t EVENT_STATE_ENTRY; //event to cause a state to execute its entry task
-	event_t EVENT_ENABLE; //event used bring a state machine out of disabled state
-	event_t EVENT_DISABLE; //event to put a state machine in its disabled state
-	event_t EVENT_FAULT; //event to put a state machine in its fault state?? may not keep
+	event_old_t EVENT_STATE_ENTRY; //event to cause a state to execute its entry task
+	event_old_t EVENT_ENABLE; //event used bring a state machine out of disabled state
+	event_old_t EVENT_DISABLE; //event to put a state machine in its disabled state
+	event_old_t EVENT_FAULT; //event to put a state machine in its fault state?? may not keep
 
 	uint8_t num_states;
-	state_t *state_table;
+	state_old_t *state_table;
 
 	uint32_t watchdog_task_id;
 } hsm_init_t;
@@ -73,8 +73,8 @@ struct hsm_handle_s
 {
 	QueueHandle_t event_queue_handle;
 	hsm_init_t init;
-	state_t *state;
-	//state_t *super_state;
+	state_old_t *state;
+	//state_old_t *super_state;
 	hsm_handle_t *super_hsm;
 };
 
@@ -88,13 +88,13 @@ void hsm_task(hsm_handle_t *handle);
 
 state_id_t hsm_get_state(hsm_handle_t *handle);
 
-esp_err_t hsm_send_evt(hsm_handle_t *handle, event_t event, uint32_t timeout_ms);
+esp_err_t hsm_send_evt(hsm_handle_t *handle, event_old_t event, uint32_t timeout_ms);
 
-esp_err_t hsm_send_evt_urgent(hsm_handle_t *handle, event_t event, uint32_t timeout_ms);
+esp_err_t hsm_send_evt_urgent(hsm_handle_t *handle, event_old_t event, uint32_t timeout_ms);
 
-esp_err_t hsm_send_evt_isr(hsm_handle_t *handle, event_t event);
+esp_err_t hsm_send_evt_isr(hsm_handle_t *handle, event_old_t event);
 
-esp_err_t hsm_send_evt_urgent_isr(hsm_handle_t *handle, event_t event);
+esp_err_t hsm_send_evt_urgent_isr(hsm_handle_t *handle, event_old_t event);
 
-uint8_t hsm_state_table_find_state(state_id_t id, state_t *state_table);
+uint8_t hsm_state_table_find_state(state_id_t id, state_old_t *state_table);
 #endif

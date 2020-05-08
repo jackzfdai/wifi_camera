@@ -37,13 +37,13 @@ static const char* TAG = "sys_mgmt";
 /*-------------------------------------------------------------------------------------------------
  * Private Function/State Declarations
  --------------------------------------------------------------------------------------------------*/
-static state_id_t state_idle (event_t event);
+static state_id_t state_idle (event_old_t event);
 
-static state_id_t state_camera_active (event_t event);
+static state_id_t state_camera_active (event_old_t event);
 
-static state_id_t state_fault (event_t event);
+static state_id_t state_fault (event_old_t event);
 
-static state_id_t state_disable (event_t event);
+static state_id_t state_disable (event_old_t event);
 
 //static void check_light_lvl_task(void *arg);
 
@@ -54,9 +54,9 @@ hsm_handle_t hsm_system_mgmt;
 
 static StaticQueue_t system_mgmt_queue;
 
-static event_t system_mgmt_queue_buffer[SYSTEM_MGMT_EVENT_QUEUE_SIZE];
+static event_old_t system_mgmt_queue_buffer[SYSTEM_MGMT_EVENT_QUEUE_SIZE];
 
-state_t state_table[] = {
+state_old_t state_table[] = {
 		{STATE_IDLE, &state_idle},
 		{STATE_CAMERA_ACTIVE, &state_camera_active},
 		{STATE_FAULT, &state_fault},
@@ -65,7 +65,7 @@ state_t state_table[] = {
 /*-------------------------------------------------------------------------------------------------
  * Public Function Definitions
  --------------------------------------------------------------------------------------------------*/
-esp_err_t system_mgmt_init(hsm_handle_t *super_state_hsm) //, state_t *super_state)
+esp_err_t system_mgmt_init(hsm_handle_t *super_state_hsm) //, state_old_t *super_state)
 {
 	printf("sys mgmt init start");
 	esp_err_t ret_code = ESP_FAIL;
@@ -148,7 +148,7 @@ void watch_dog_task(void *pvParameter)
 /*-------------------------------------------------------------------------------------------------
  * Private Function Definitions
  --------------------------------------------------------------------------------------------------*/
-static state_id_t state_idle (event_t event)
+static state_id_t state_idle (event_old_t event)
 {
 	switch(event)
 	{
@@ -175,7 +175,7 @@ static state_id_t state_idle (event_t event)
 	}
 }
 
-static state_id_t state_camera_active (event_t event)
+static state_id_t state_camera_active (event_old_t event)
 {
 	switch(event)
 	{
@@ -202,7 +202,7 @@ static state_id_t state_camera_active (event_t event)
 	}
 }
 
-static state_id_t state_fault (event_t event)
+static state_id_t state_fault (event_old_t event)
 {
 	switch(event)
 	{
@@ -220,7 +220,7 @@ static state_id_t state_fault (event_t event)
 	return NULL;
 }
 
-static state_id_t state_disable (event_t event)
+static state_id_t state_disable (event_old_t event)
 {
 	switch(event)
 	{

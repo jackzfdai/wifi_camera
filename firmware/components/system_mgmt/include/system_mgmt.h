@@ -68,7 +68,7 @@ esp_err_t system_mgmt_init(hsm_handle_t *super_state_hsm);
 
 void system_mgmt_task(void *pvParameter);
 
-//state_id_t state_startup (event_t event);
+//state_id_t state_startup (event_old_t event);
 
 void watch_dog_task (void *pvParameter);
 #endif

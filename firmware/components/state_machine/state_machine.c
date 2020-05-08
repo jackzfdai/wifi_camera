@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+
 #include "esp_err.h"
 #include "esp_log.h"
 
@@ -17,41 +21,57 @@
  * Private Variable Definitions
  --------------------------------------------------------------------------------------------------*/
 static const char * GENERIC_LOG_TAG = "GENERIC FSM";
-
+static uint32_t num_fsm_created = 0;
 /*-------------------------------------------------------------------------------------------------
  * Private Function Declarations
  --------------------------------------------------------------------------------------------------*/
 static esp_err_t fsm_process_event(fsm_handle_t *fsm, event_t event);
-
+static void fsm_task(void * parameters);
 /*-------------------------------------------------------------------------------------------------
  * Public Function Definitions
  --------------------------------------------------------------------------------------------------*/
 esp_err_t fsm_init(fsm_init_t *init, fsm_handle_t *fsm)
 {
+	esp_err_t ret_val = ESP_OK;
 	if (init == NULL || fsm == NULL)
 	{
-		return ESP_ERR_INVALID_ARG;
+		ret_val = ESP_ERR_INVALID_ARG;
+		return ret_val;
 	}
 
 	memcpy(&fsm->init, init, sizeof(fsm_init_t));
 
-	fsm->event_queue_handle = xQueueCreateStatic(fsm->init.event_queue_size, // The number of items the queue can hold.
+	fsm->event_queue_handle = xQueueCreateStatic(fsm->init.event_queue_len, // The number of items the queue can hold.
 	                         sizeof(event_t),     // The size of each item in the queue
 	                         (uint8_t*) fsm->init.event_queue_buffer, // The buffer that will hold the items in the queue.
-	                         &fsm->init.event_queue); //buffer to hold queue structure
+	                         &fsm->init.event_queue_data); //buffer to hold queue structure
 
 	if (fsm->event_queue_handle == NULL)
 	{
-		return ESP_ERR_INVALID_SIZE;
+		ret_val = ESP_ERR_INVALID_SIZE;
+		return ret_val;
+	}
+
+	char task_name[24];
+	sprintf(task_name, "FSM_TASK %d", num_fsm_created);
+	num_fsm_created ++;
+
+	BaseType_t ret = xTaskCreatePinnedToCore(fsm_task,task_name,2048,(void*) fsm,11, NULL, fsm->init.task_core);
+	if (ret != pdPASS)
+	{
+		ret_val = ESP_FAIL;
+		return ret_val;
 	}
 
 	fsm->curr_state = fsm->init.STATE_DEFAULT;
 
-	return ESP_OK;
+	ret_val = ESP_OK;
+	return ret_val;
 }
 
-void fsm_task(fsm_handle_t *fsm)
+static void fsm_task(void * parameters)
 {
+	fsm_handle_t * fsm = (fsm_handle_t *) parameters;
 	event_t event;
 	while(1)
 	{
