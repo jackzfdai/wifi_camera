@@ -79,4 +79,6 @@ esp_err_t protocol_send_data(void * buf, uint32_t len);
 
 esp_err_t protocol_send_ctrl(protocol_ctrl_payload_t ctrl);
 
+int protocol_recv_ctrl (void ** buf);
+
 #endif

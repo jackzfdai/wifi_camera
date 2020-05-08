@@ -34,7 +34,7 @@ typedef struct
 {
 	const char * FSM_LOG_TAG;
 
-	StaticQueue_t event_queue_data;
+	StaticQueue_t *event_queue_data;
 	event_t *event_queue_buffer;
 	uint32_t event_queue_len;
 
