@@ -37,7 +37,16 @@
 /*---------private functions----------*/
 static void network_data_send_task(void *pvParameter);
 //static void network_cmd_send_task();
-//static void network_rcv_task();
+static void network_rcv_task();
+
+static void network_ctrl_task(void * parameters);
+
+static void protocol_send_session_rqst_response(void);
+static void protocol_session_start(void);
+static void protocol_session_keepalive(void);
+static void protocol_session_end(void);
+static void protocol_start_stream(void);
+static void protocol_end_stream(void);
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void wifi_init_sta(void);
@@ -69,29 +78,25 @@ static const char *TAG_WIFI_STATION = "wifi station";
 
 static int s_retry_num = 0;
 
-static void network_ctrl_task(void * parameters);
 
-static void protocol_send_session_rqst_response(void);
-static void protocol_session_start(void);
-static void protocol_session_keepalive(void);
-static void protocol_session_end(void);
-static void protocol_start_stream(void);
-static void protocol_end_stream(void);
+
+//static void network_module_system_up(void);
 
 transition_t protocol_transitions[] =
 		{
-				{STATE_NOT_CONNECTED, EVENT_SESSION_RQST, STATE_CONNECTING, &protocol_send_session_rqst_response},
-				{STATE_CONNECTING, EVENT_SESSION_RQST_TIMEOUT, STATE_NOT_CONNECTED, NULL},
-				{STATE_CONNECTING, EVENT_SESSION_KEEPALIVE, STATE_CONNECTED, &protocol_session_start},
-				{STATE_CONNECTED, EVENT_SESSION_KEEPALIVE, STATE_CONNECTED, &protocol_session_keepalive},
-				{STATE_CONNECTED, EVENT_SESSION_TIMEOUT, STATE_NOT_CONNECTED, &protocol_session_end},
-				{STATE_CONNECTED, EVENT_SESSION_END, STATE_NOT_CONNECTED, &protocol_session_end},
-				{STATE_CONNECTED, EVENT_STREAM_START_RQST, STATE_STREAMING, &protocol_start_stream},
-				{STATE_STREAMING, EVENT_STREAM_STOP_RQST, STATE_CONNECTED, &protocol_end_stream},
-				{STATE_STREAMING, EVENT_ERROR, STATE_CONNECTED, &protocol_end_stream},
-				{STATE_STREAMING, EVENT_SESSION_TIMEOUT, STATE_NOT_CONNECTED, &protocol_session_end},
-				{STATE_STREAMING, EVENT_SESSION_END, STATE_NOT_CONNECTED, &protocol_session_end}
-		};
+				{STATE_START_UP, EVENT_SYSTEM_UP, STATE_SESSION_NOT_CONNECTED, NULL},
+				{STATE_SESSION_NOT_CONNECTED, EVENT_SESSION_RQST, STATE_SESSION_CONNECTING, &protocol_send_session_rqst_response},
+				{STATE_SESSION_CONNECTING, EVENT_SESSION_RQST_TIMEOUT, STATE_SESSION_NOT_CONNECTED, NULL},
+				{STATE_SESSION_CONNECTING, EVENT_SESSION_KEEPALIVE, STATE_SESSION_CONNECTED, &protocol_session_start},
+				{STATE_SESSION_CONNECTED, EVENT_SESSION_KEEPALIVE, STATE_SESSION_CONNECTED, &protocol_session_keepalive},
+				{STATE_SESSION_CONNECTED, EVENT_SESSION_TIMEOUT, STATE_SESSION_NOT_CONNECTED, &protocol_session_end},
+				{STATE_SESSION_CONNECTED, EVENT_SESSION_END, STATE_SESSION_NOT_CONNECTED, &protocol_session_end},
+				{STATE_SESSION_CONNECTED, EVENT_STREAM_START_RQST, STATE_SESSION_STREAMING, &protocol_start_stream},
+				{STATE_SESSION_STREAMING, EVENT_STREAM_STOP_RQST, STATE_SESSION_CONNECTED, &protocol_end_stream},
+				{STATE_SESSION_STREAMING, EVENT_ERROR, STATE_SESSION_CONNECTED, &protocol_end_stream},
+				{STATE_SESSION_STREAMING, EVENT_SESSION_TIMEOUT, STATE_SESSION_NOT_CONNECTED, &protocol_session_end},
+				{STATE_SESSION_STREAMING, EVENT_SESSION_END, STATE_SESSION_NOT_CONNECTED, &protocol_session_end}
+		}; //TODO: add state handling for if wifi is disconnected
 
 static StaticQueue_t network_fsm_queue_data;
 static event_t network_fsm_queue_buffer[NETWORK_FSM_QUEUE_LEN];
@@ -107,9 +112,9 @@ esp_err_t network_module_init()
 //	network_fsm_queue = xQueueCreateStatic(NETWORK_FSM_QUEUE_LEN, sizeof(event_t), (uint8_t*) network_fsm_queue_buffer, &network_fsm_queue_data);
 	fsm_init_t network_fsm_init;
 	network_fsm_init.FSM_LOG_TAG = TAG;
-	network_fsm.init.STATE_DEFAULT = STATE_NOT_CONNECTED;
-	network_fsm.init.STATE_ID_ANY = STATE_GENERIC;
-	network_fsm_init.event_queue_data = network_fsm_queue_data;
+	network_fsm_init.STATE_DEFAULT = STATE_START_UP;
+	network_fsm_init.STATE_ID_ANY = STATE_GENERIC;
+	network_fsm_init.event_queue_data = &network_fsm_queue_data;
 	network_fsm_init.event_queue_buffer = network_fsm_queue_buffer;
 	network_fsm_init.event_queue_len = NETWORK_FSM_QUEUE_LEN;
 	network_fsm_init.transition_table = protocol_transitions;
@@ -134,7 +139,6 @@ esp_err_t network_module_init()
 	}
 
 	wifi_init_sta();
-//	ESP_LOGI(TAG, "free heaps after wifi init: %d\n", xPortGetFreeHeapSize());
 
 	protocol_init_t protocol_init;
 	protocol_init.evt_handler = NULL;
@@ -142,7 +146,7 @@ esp_err_t network_module_init()
 
 	xTaskCreatePinnedToCore(network_data_send_task,"network_data_send_task",2048,NULL,NETWORK_DATA_SEND_PRIO, NULL, 0);
 	//xTaskCreatePinnedToCore(network_cmd_send_task,"network_cmd_send_task",1024,NULL,NETWORK_CMD_SEND_PRIO, NULL, 0);
-	//xTaskCreatePinnedToCore(network_rcv_task,"network_rcv_task",1024,NULL,NETWORK_RCV_PRIO, NULL, 0);
+	xTaskCreatePinnedToCore(network_rcv_task,"network_rcv_task",1024,NULL,NETWORK_RCV_PRIO, NULL, 0);
 
 	return ret_val;
 }
@@ -155,13 +159,13 @@ static void network_ctrl_task (void * parameter)
 	{
 		switch(network_fsm.curr_state)
 		{
-		case STATE_NOT_CONNECTED:
+		case STATE_SESSION_NOT_CONNECTED:
 			break;
-		case STATE_CONNECTING:
+		case STATE_SESSION_CONNECTING:
 			break;
-		case STATE_CONNECTED:
+		case STATE_SESSION_CONNECTED:
 			break;
-		case STATE_STREAMING:
+		case STATE_SESSION_STREAMING:
 			break;
 		default:
 			break;
@@ -173,40 +177,34 @@ static void network_data_send_task(void *pvParameter)
 {
 	while(1)
 	{
-        while(!network_ready)
-        {
+		if (network_fsm.curr_state == STATE_START_UP)
+		{
 			vTaskDelay(200/portTICK_PERIOD_MS);
-			ESP_LOGI(TAG, "Waiting on network ready.");
-        }
-
-//		network_module_generic_data_t data;
-//		xQueueReceive(network_data_send_queue, (void *) &data, portMAX_DELAY);
-
-        void * buf = NULL;
-        uint32_t size = 0;
-        esp_err_t ret_val = camera_get_jpeg(&buf, &size, portMAX_DELAY);
-        if (ret_val != ESP_OK)
-        {
-        	ESP_LOGE(TAG, "Frame get error.");
-        	continue;
-        }
+			continue;
+		}
+		void * buf = NULL;
+		uint32_t size = 0;
+		esp_err_t ret_val = camera_get_jpeg(&buf, &size, portMAX_DELAY);
+		if (ret_val != ESP_OK)
+		{
+			ESP_LOGE(TAG, "Frame get error.");
+			continue;
+		}
 
 		TickType_t frame_send_time = xTaskGetTickCount();
 		protocol_send_data(buf, size);
 		frame_send_time = xTaskGetTickCount() - frame_send_time;
 
-        ESP_LOGI(TAG, "free DMA-capable heap size: %d, frame send time %d0 ms", heap_caps_get_minimum_free_size(MALLOC_CAP_DMA), frame_send_time);
+		ESP_LOGI(TAG, "free DMA-capable heap size: %d, frame send time %d0 ms", heap_caps_get_minimum_free_size(MALLOC_CAP_DMA), frame_send_time);
 
-        //TODO: implement a back off depending on memory availability
+		//TODO: implement a back off depending on memory availability
 //		vTaskDelay(50/portTICK_PERIOD_MS);
-        ret_val = camera_return_jpeg(buf);
-        if (ret_val != ESP_OK)
-        {
-        	ESP_LOGE(TAG, "Frame return error.");
-        	continue;
-        }
-
-//		xTaskNotifyGive(camera_task);
+		ret_val = camera_return_jpeg(buf);
+		if (ret_val != ESP_OK)
+		{
+			ESP_LOGE(TAG, "Frame return error.");
+			continue;
+		}
 	}
 }
 
@@ -227,6 +225,14 @@ void protocol_evt_handler(protocol_evt_t evt)
 		break;
 	}
 }
+
+//static void network_module_system_up(void)
+//{
+//    int err = connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+//    if (err != 0) {
+//        ESP_LOGE(TAG, "Socket unable to connect: errno %d", errno);
+//    }
+//}
 
 static void protocol_send_session_rqst_response(void)
 {
@@ -282,29 +288,20 @@ static void protocol_end_stream(void)
 //	}
 //}
 //
-//static void network_rcv_task(void *pvParameter)
-//{
-//	while(1)
-//	{
-//		//receive frm network
-//
-//		struct sockaddr_in source_addr; // Large enough for both IPv4 or IPv6
-//		socklen_t socklen = sizeof(source_addr);
-//		int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
-//
-//		// Error occurred during receiving
-//		if (len < 0) {
-//			ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
-//			break;
-//		}
-//		// Data received
-//		else {
-//			rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-//			ESP_LOGI(TAG, "Received %d bytes from %s:", len, addr_str);
-//			ESP_LOGI(TAG, "%s", rx_buffer);
-//		}
-//	}
-//}
+static void network_rcv_task(void *pvParameter)
+{
+	while(1)
+	{
+		//receive frm network
+		while (network_fsm.curr_state == STATE_START_UP)
+		{
+			vTaskDelay(200/portTICK_PERIOD_MS);
+		}
+
+		uint8_t * recv_buf;
+		int len = protocol_recv_ctrl(&recv_buf);
+	}
+}
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -346,6 +343,8 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 						 ip4addr_ntoa(&event->ip_info.ip));
 				s_retry_num = 0;
 				xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+				fsm_send_evt(&network_fsm, EVENT_SYSTEM_UP, 0);
+
 				break;
 			}
 			default:

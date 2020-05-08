@@ -19,6 +19,7 @@ import diag
 # -----------  Config  ----------
 IP_VERSION = 'IPv4'
 PORT = 3333
+PORT_CTRL = 3332
 # -------------------------------
 
 def find_camera (list, ip_addr, port):
@@ -39,12 +40,15 @@ else:
 try:
     sock = socket.socket(family_addr, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock_ctrl = socket.socket(family_addr, socket.SOCK_DGRAM)
+    sock_ctrl.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 except socket.error as msg:
     print('Failed to create socket. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
     sys.exit()
 
 try:
     sock.bind(('', PORT))
+    sock_ctrl.bind(('', PORT_CTRL))
 except socket.error as msg:
     print('Bind failed. Error: ' + str(msg[0]) + ': ' + msg[1])
     sys.exit()

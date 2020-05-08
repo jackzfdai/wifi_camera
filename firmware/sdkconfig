@@ -138,11 +138,12 @@ CONFIG_RESET=0
 # end of Camera Project High Level Configuration
 
 #
-# UDP Client Configuration
+# Streaming Client Configuration
 #
 CONFIG_HOST_IP_ADDR="192.168.1.69"
 CONFIG_PORT=3333
-# end of UDP Client Configuration
+CONFIG_CTRL_PORT=3332
+# end of Streaming Client Configuration
 
 #
 # Wifi Connection Configuration

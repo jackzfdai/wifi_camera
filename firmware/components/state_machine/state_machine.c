@@ -44,7 +44,7 @@ esp_err_t fsm_init(fsm_init_t *init, fsm_handle_t *fsm)
 	fsm->event_queue_handle = xQueueCreateStatic(fsm->init.event_queue_len, // The number of items the queue can hold.
 	                         sizeof(event_t),     // The size of each item in the queue
 	                         (uint8_t*) fsm->init.event_queue_buffer, // The buffer that will hold the items in the queue.
-	                         &fsm->init.event_queue_data); //buffer to hold queue structure
+	                         fsm->init.event_queue_data); //buffer to hold queue structure
 
 	if (fsm->event_queue_handle == NULL)
 	{
@@ -174,7 +174,10 @@ static esp_err_t fsm_process_event(fsm_handle_t *fsm, event_t event)
 		if (fsm->init.transition_table[index].curr_state == fsm->curr_state && fsm->init.transition_table[index].event == event)
 		{
 			fsm->curr_state = fsm->init.transition_table[index].new_state;
-			fsm->init.transition_table[index].transition_fn();
+			if (fsm->init.transition_table[index].transition_fn != NULL)
+			{
+				fsm->init.transition_table[index].transition_fn();
+			}
 			break;
 		}
 	}
