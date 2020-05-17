@@ -76,19 +76,12 @@ menu "Streaming Client Configuration"
         help
             IPV4 address to which the streaming client will send data.
 
-    config PORT
-        int "Port"
+    config DEST_PORT
+        int "Destination Port"
         range 0 65535
         default 3333
         help
-            The remote port to which the streaming client will send data.
-    
-    config CTRL_PORT
-        int "Ctrl Port"
-        range 0 65535
-        default 3332
-        help
-            The remote port to which the streaming client sends and receives session ctrl information. 
+            The remote port to which the streaming client will send data and ctrl information.
 
 endmenu
 

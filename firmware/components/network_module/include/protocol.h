@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include "esp_err.h"
 
-#define PROTOCOL_FRAME_SIZE 		1024
-#define PROTOCOL_HEADER_SIZE			12
+#define PROTOCOL_FRAME_SIZE 			1024
+#define PROTOCOL_HEADER_SIZE			16
 #define PROTOCOL_MAX_PAYLOAD_SIZE		((PROTOCOL_FRAME_SIZE)-(PROTOCOL_HEADER_SIZE))
 
 typedef enum
@@ -28,12 +28,12 @@ typedef enum
 
 typedef enum
 {
-	PROTOCOL_SESSION_RQST = 0xF,
-	PROTOCOL_SESSION_INIT,
-	PROTOCOL_SESSION_STOP,
-	PROTOCOL_SESSION_END,
+	PROTOCOL_CONNECT_RQST = 0xF,
+	PROTOCOL_DISCONNECT_RQST,
+	PROTOCOL_CONNECTED,
 	PROTOCOL_STREAM_RQST,
 	PROTOCOL_STREAM_STOP,
+	PROTOCOL_STREAMING
 } protocol_ctrl_payload_t;
 
 typedef enum
@@ -49,16 +49,6 @@ typedef struct
 	void (*evt_handler)(protocol_evt_t evt);
 } protocol_init_t;
 
-//typedef struct
-//{
-//	uint8_t frame_id;
-//	uint8_t frame_type;
-//	uint8_t total_packets;
-//	uint8_t pkt_sequence;
-//	uint32_t local_timestamp_ms; //only updated for new frame
-//	uint32_t payload_len;
-//} protocol_packet_hdr_t;
-
 typedef union
 {
 	struct
@@ -67,7 +57,7 @@ typedef union
 		uint8_t frame_type;
 		uint8_t total_packets;
 		uint8_t pkt_sequence;
-		uint32_t local_timestamp_ms; //only updated for new frame
+		int64_t local_timestamp_ms; //only updated for new frame
 		uint32_t payload_len;
 	};
 	uint8_t val [PROTOCOL_HEADER_SIZE];

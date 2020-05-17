@@ -33,11 +33,12 @@
 #include "state_machine.h"
 
 #define NETWORK_FSM_QUEUE_LEN		10
+#define NETWORK_SESSION_TIMEOUT_US	(5000000U)
 
 /*---------private functions----------*/
 static void network_data_send_task(void *pvParameter);
 //static void network_cmd_send_task();
-static void network_rcv_task();
+static void network_rcv_task(void *parameters);
 
 static void network_ctrl_task(void * parameters);
 
@@ -47,9 +48,15 @@ static void protocol_session_keepalive(void);
 static void protocol_session_end(void);
 static void protocol_start_stream(void);
 static void protocol_end_stream(void);
+//static void session_timer_start(void);
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void wifi_init_sta(void);
+
+static void session_timeout_cb(void* arg);
+
+static void process_network_rcv(uint8_t * packet);
+
 
 /*---------private variables----------*/
 volatile bool network_ready = false;
@@ -78,24 +85,20 @@ static const char *TAG_WIFI_STATION = "wifi station";
 
 static int s_retry_num = 0;
 
-
+esp_timer_handle_t session_timeout;
 
 //static void network_module_system_up(void);
 
 transition_t protocol_transitions[] =
 		{
 				{STATE_START_UP, EVENT_SYSTEM_UP, STATE_SESSION_NOT_CONNECTED, NULL},
-				{STATE_SESSION_NOT_CONNECTED, EVENT_SESSION_RQST, STATE_SESSION_CONNECTING, &protocol_send_session_rqst_response},
-				{STATE_SESSION_CONNECTING, EVENT_SESSION_RQST_TIMEOUT, STATE_SESSION_NOT_CONNECTED, NULL},
-				{STATE_SESSION_CONNECTING, EVENT_SESSION_KEEPALIVE, STATE_SESSION_CONNECTED, &protocol_session_start},
-				{STATE_SESSION_CONNECTED, EVENT_SESSION_KEEPALIVE, STATE_SESSION_CONNECTED, &protocol_session_keepalive},
-				{STATE_SESSION_CONNECTED, EVENT_SESSION_TIMEOUT, STATE_SESSION_NOT_CONNECTED, &protocol_session_end},
-				{STATE_SESSION_CONNECTED, EVENT_SESSION_END, STATE_SESSION_NOT_CONNECTED, &protocol_session_end},
-				{STATE_SESSION_CONNECTED, EVENT_STREAM_START_RQST, STATE_SESSION_STREAMING, &protocol_start_stream},
-				{STATE_SESSION_STREAMING, EVENT_STREAM_STOP_RQST, STATE_SESSION_CONNECTED, &protocol_end_stream},
-				{STATE_SESSION_STREAMING, EVENT_ERROR, STATE_SESSION_CONNECTED, &protocol_end_stream},
-				{STATE_SESSION_STREAMING, EVENT_SESSION_TIMEOUT, STATE_SESSION_NOT_CONNECTED, &protocol_session_end},
-				{STATE_SESSION_STREAMING, EVENT_SESSION_END, STATE_SESSION_NOT_CONNECTED, &protocol_session_end}
+				{STATE_SESSION_NOT_CONNECTED, EVENT_SESSION_CONNECTED, STATE_SESSION_CONNECTED, NULL},
+				{STATE_SESSION_CONNECTED, EVENT_STREAM_START_RQST, STATE_SESSION_STREAMING, NULL},
+				{STATE_SESSION_STREAMING, EVENT_STREAM_STOP_RQST, STATE_SESSION_CONNECTED, NULL},
+				{STATE_SESSION_STREAMING, EVENT_ERROR, STATE_SESSION_CONNECTED, NULL},
+				{STATE_GENERIC, EVENT_SESSION_TIMEOUT, STATE_SESSION_NOT_CONNECTED, NULL},
+				{STATE_GENERIC, EVENT_WIFI_DISCONNECTED, STATE_START_UP, NULL}
+//				{STATE_GENERIC, EVENT_SESSION_END, STATE_SESSION_NOT_CONNECTED, NULL}
 		}; //TODO: add state handling for if wifi is disconnected
 
 static StaticQueue_t network_fsm_queue_data;
@@ -144,9 +147,22 @@ esp_err_t network_module_init()
 	protocol_init.evt_handler = NULL;
 	ret_val = protocol_session_init(&protocol_init);
 
+	if (ret_val != ESP_OK)
+	{
+		return ret_val;
+	}
+
 	xTaskCreatePinnedToCore(network_data_send_task,"network_data_send_task",2048,NULL,NETWORK_DATA_SEND_PRIO, NULL, 0);
 	//xTaskCreatePinnedToCore(network_cmd_send_task,"network_cmd_send_task",1024,NULL,NETWORK_CMD_SEND_PRIO, NULL, 0);
-	xTaskCreatePinnedToCore(network_rcv_task,"network_rcv_task",1024,NULL,NETWORK_RCV_PRIO, NULL, 0);
+	xTaskCreatePinnedToCore(network_rcv_task,"network_rcv_task",2048,NULL,NETWORK_RCV_PRIO, NULL, 0);
+
+	esp_timer_create_args_t timer_init;
+	timer_init.arg = NULL;
+	timer_init.callback = session_timeout_cb;
+	timer_init.dispatch_method = ESP_TIMER_TASK;
+	timer_init.name = "Session Timeout";
+
+	ret_val = esp_timer_create(&timer_init, &session_timeout);
 
 	return ret_val;
 }
@@ -159,17 +175,19 @@ static void network_ctrl_task (void * parameter)
 	{
 		switch(network_fsm.curr_state)
 		{
-		case STATE_SESSION_NOT_CONNECTED:
+		case STATE_SESSION_STREAMING:
+			protocol_send_ctrl(PROTOCOL_STREAMING);
 			break;
-		case STATE_SESSION_CONNECTING:
+		case STATE_SESSION_NOT_CONNECTED:
+			protocol_send_ctrl(PROTOCOL_CONNECT_RQST);
 			break;
 		case STATE_SESSION_CONNECTED:
-			break;
-		case STATE_SESSION_STREAMING:
+			protocol_send_ctrl(PROTOCOL_CONNECTED);
 			break;
 		default:
 			break;
 		}
+		vTaskDelay(1000/portTICK_PERIOD_MS);
 	}
 }
 
@@ -224,6 +242,11 @@ void protocol_evt_handler(protocol_evt_t evt)
 	default:
 		break;
 	}
+}
+
+static void session_timeout_cb(void* arg)
+{
+	fsm_send_evt(&network_fsm, EVENT_SESSION_TIMEOUT, portMAX_DELAY);
 }
 
 //static void network_module_system_up(void)
@@ -288,7 +311,7 @@ static void protocol_end_stream(void)
 //	}
 //}
 //
-static void network_rcv_task(void *pvParameter)
+static void network_rcv_task(void *parameters)
 {
 	while(1)
 	{
@@ -298,9 +321,25 @@ static void network_rcv_task(void *pvParameter)
 			vTaskDelay(200/portTICK_PERIOD_MS);
 		}
 
-		uint8_t * recv_buf;
-		int len = protocol_recv_ctrl(&recv_buf);
+		uint8_t * recv_buf = NULL;
+		int len = -1;
+		len = protocol_recv_ctrl((void *) &recv_buf);
+
+		if (len > 0)
+		{
+			esp_timer_stop(session_timeout);
+			esp_timer_start_once(session_timeout, NETWORK_SESSION_TIMEOUT_US);
+			process_network_rcv(recv_buf);
+			ESP_LOGI(TAG, "Received valid msg");
+		}
+
+		vTaskDelay(500/portTICK_PERIOD_MS);
 	}
+}
+
+static void process_network_rcv(uint8_t * packet)
+{
+	return;
 }
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,

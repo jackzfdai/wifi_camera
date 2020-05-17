@@ -171,9 +171,13 @@ static esp_err_t fsm_process_event(fsm_handle_t *fsm, event_t event)
 	uint32_t index = 0;
 	for (index = 0; index < fsm->init.transition_table_size; index ++)
 	{
-		if (fsm->init.transition_table[index].curr_state == fsm->curr_state && fsm->init.transition_table[index].event == event)
+		if ((fsm->init.transition_table[index].curr_state == fsm->curr_state || fsm->init.transition_table[index].curr_state == fsm->init.STATE_ID_ANY) && fsm->init.transition_table[index].event == event)
 		{
-			fsm->curr_state = fsm->init.transition_table[index].new_state;
+			if (fsm->init.transition_table[index].new_state != fsm->init.STATE_ID_ANY)
+			{
+				fsm->curr_state = fsm->init.transition_table[index].new_state;
+			}
+
 			if (fsm->init.transition_table[index].transition_fn != NULL)
 			{
 				fsm->init.transition_table[index].transition_fn();
