@@ -11,16 +11,25 @@ class PROTOCOL_ERRS(Enum):
 	PROTOCOL_ERR_INVALID_ARG = 5
 	PROTOCOL_ERR_GENERIC = 6
 
+# class PROTOCOL_PKT_TYPE(Enum):
+# 	PROTOCOL_CTRL_PKT = 0xF
+# 	PROTOCOL_DATA_PKT = 0xF + 1
+# 	PROTOCOL_ERR_PKT = 0xF + 2
+
+PROTOCOL_CTRL_PKT = 0xF
+PROTOCOL_DATA_PKT = 0xF + 1
+PROTOCOL_ERR_PKT = 0xF + 2
+
 class packet:
 	def __init__(self, buffer):
-		header = struct.unpack('<BBBBII', buffer[0:12])
+		header = struct.unpack('<BBBBqI', buffer[0:16])
 		self.frame_id = header[0]
 		self.type = header[1]
 		self.total_packet_number = header[2]
 		self.pkt_sequence = header[3]
 		self.transmitter_timestamp = header[4]
 		self.payload_len = header[5]
-		self.payload = buffer[12:len(buffer)]
+		self.payload = buffer[16:len(buffer)]
 
 
 class frame:
@@ -77,12 +86,15 @@ class camera:
 		return (addr == self.addr) and (port == self.port)
 
 	def recv_pkt(self, pkt):
-		for frame_item in self.frame_list:
-			if frame_item.is_part_of_frame(pkt):
-				if frame_item.add_packet(pkt):
-					return True
-		new_frame = frame(pkt) 
-		self.frame_list.insert(new_frame.id, new_frame)
+		# print(type(PROTOCOL_PKT_TYPE.PROTOCOL_DATA_PKT) + type(pkt.type))
+		if pkt.type == PROTOCOL_DATA_PKT:
+			for frame_item in self.frame_list:
+				if frame_item.is_part_of_frame(pkt):
+					if frame_item.add_packet(pkt):
+						return True
+			new_frame = frame(pkt) 
+			self.frame_list.insert(new_frame.id, new_frame)
+		#else if control packet
 		return True
 
 	def get_frame(self):

@@ -15,6 +15,7 @@ from PIL import Image
 import numpy
 import time
 import diag
+import threading
 
 # -----------  Config  ----------
 IP_VERSION = 'IPv4'
@@ -28,6 +29,14 @@ def find_camera (list, ip_addr, port):
             return list.index(camera_item)
     return -1
 
+def camera_ctrl_thread (camera, send_sock):
+    while True:
+        send_addr = (camera.addr, camera.port)
+        msg = "Hello there"
+        send_sock.sendto(msg.encode(), send_addr)
+        print("Sent to " + str(send_addr))
+        time.sleep(1)
+
 if IP_VERSION == 'IPv4':
     family_addr = socket.AF_INET
 elif IP_VERSION == 'IPv6':
@@ -40,15 +49,15 @@ else:
 try:
     sock = socket.socket(family_addr, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock_ctrl = socket.socket(family_addr, socket.SOCK_DGRAM)
-    sock_ctrl.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # sock_ctrl = socket.socket(family_addr, socket.SOCK_DGRAM)
+    # sock_ctrl.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 except socket.error as msg:
     print('Failed to create socket. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
     sys.exit()
 
 try:
     sock.bind(('', PORT))
-    sock_ctrl.bind(('', PORT_CTRL))
+    # sock_ctrl.bind(('', PORT_CTRL))
 except socket.error as msg:
     print('Bind failed. Error: ' + str(msg[0]) + ': ' + msg[1])
     sys.exit()
@@ -70,7 +79,10 @@ while True:
         camera_index = find_camera(camera_list, addr[0], addr[1])
         if camera_index == -1:
             cam_new = protocol.camera(addr[0], addr[1])
+            print("New camera added IPv4 adr: " + str(addr[0]) + " Port: " + str(addr[1]))
             camera_list.append(cam_new)
+            ctrl_thread = threading.Thread(target=camera_ctrl_thread, args=(cam_new, sock), daemon = True)
+            ctrl_thread.start()
         
         data_pkt = protocol.packet(data)
         camera_list[camera_index].recv_pkt(data_pkt)
@@ -97,6 +109,9 @@ while True:
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break        
 
+        # msg = "Hello there"
+        # sock.sendto(msg.encode(), addr)
+        # print("Sent to " + str(addr))
 
     except socket.error as msg:
         print('Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
