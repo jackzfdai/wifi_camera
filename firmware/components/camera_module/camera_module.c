@@ -7,7 +7,7 @@
 
 #include "esp_camera.h"
 #include "system_mgmt.h"
-#include "network_module.h"
+//#include "network_module.h"
 
 #include "esp_log.h"
 

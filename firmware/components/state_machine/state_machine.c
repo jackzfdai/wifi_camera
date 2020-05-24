@@ -188,7 +188,7 @@ static esp_err_t fsm_process_event(fsm_handle_t *fsm, event_t event)
 
 	if (index == fsm->init.transition_table_size)
 	{
-		ESP_LOGW(fsm->init.FSM_LOG_TAG, "No defined state transition for received event.");
+		ESP_LOGW(fsm->init.FSM_LOG_TAG, "No defined state transition for received event: event %d, state %d", event, fsm->curr_state);
 	}
 
 	return ESP_OK;

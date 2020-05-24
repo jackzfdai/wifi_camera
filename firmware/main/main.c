@@ -18,6 +18,8 @@ static const char * TAG = "main";
 void app_main()
 {
 	vTaskDelay(pdMS_TO_TICKS(100));
+
+	printf('int64 size %d', sizeof(int64_t));
 //    printf("Hello world!\n");
 
     /* Print chip information */

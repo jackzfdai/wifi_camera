@@ -1,36 +1,26 @@
 #Jack Dai May 2020
 
-from enum import Enum
 import struct 
+import threading
+import time
 
-class PROTOCOL_ERRS(Enum):
-	PROTOCOL_OK = 0
-	PROTOCOL_ERR_CHN_BUSY = 1
-	PROTOCOL_ERR_NO_MEM = 3
-	PROTOCOL_ERR_NOT_CONNECTED = 4
-	PROTOCOL_ERR_INVALID_ARG = 5
-	PROTOCOL_ERR_GENERIC = 6
 
-# class PROTOCOL_PKT_TYPE(Enum):
-# 	PROTOCOL_CTRL_PKT = 0xF
-# 	PROTOCOL_DATA_PKT = 0xF + 1
-# 	PROTOCOL_ERR_PKT = 0xF + 2
-
-PROTOCOL_CTRL_PKT = 0xF
-PROTOCOL_DATA_PKT = 0xF + 1
-PROTOCOL_ERR_PKT = 0xF + 2
 
 class packet:
 	def __init__(self, buffer):
-		header = struct.unpack('<BBBBqI', buffer[0:16])
+		header = struct.unpack('<BBBBIq', buffer[0:16])
 		self.frame_id = header[0]
 		self.type = header[1]
 		self.total_packet_number = header[2]
 		self.pkt_sequence = header[3]
-		self.transmitter_timestamp = header[4]
-		self.payload_len = header[5]
+		self.payload_len = header[4]
+		self.transmitter_timestamp = header[5]
 		self.payload = buffer[16:len(buffer)]
 
+class packet_out:
+	def __init__(self, frame_id, pkt_type, total_pkt_number, pkt_sequence, transmitter_timestamp, payload_len, payload):
+		self.buffer = struct.pack('<BBBBIq', frame_id, pkt_type, total_pkt_number, pkt_sequence, payload_len, transmitter_timestamp)
+		self.buffer = self.buffer + struct.pack('<B', payload) 
 
 class frame:
 	def __init__(self, pkt):
@@ -63,7 +53,7 @@ class frame:
 
 	def signal_frame_ready(self):
 		self.frame_complete = True
-		print("frame ready!")
+		# print("frame ready!")
 
 	def get_frame_data(self):
 		if self.packets_received == self.total_packet_number: #TODO: can also use the frame_complete flag
@@ -77,25 +67,66 @@ class frame:
 
 
 class camera:
+	STATE_IDLE = 0
+	STATE_STREAMING = 1
+
+	CONN_TIMEOUT_INTERVAL = 5
+	KEEPALIVE_INTERVAL = 1
+
+	PROTOCOL_CTRL_PKT = 0xF
+	PROTOCOL_DATA_PKT = 0xF + 1
+	PROTOCOL_ERR_PKT = 0xF + 2
+
+	PROTOCOL_STREAM_RQST = 0xF
+	PROTOCOL_STREAM_STOP = 0xF + 1
+	PROTOCOL_STREAM_KEEPALIVE = 0xF + 2
+
+
 	def __init__(self, addr, port):
 		self.addr = addr 
 		self.port = port
 		self.frame_list = []
+		self.out_frame_id = 0
+		self.out_pkt_list = [] 
+		self.state = self.STATE_IDLE
+		self.pkt_recved = 0 
+		self.keepalive = threading.Thread(target = self.keepalive_thread, args = (), daemon = True)
+		self.conn_timeout = threading.Thread(target = self.conn_timeout_thread, args = (), daemon = True)
+		self.keepalive.start()
+		self.conn_timeout.start()
+
+	def keepalive_thread(self):
+		while True:
+			if self.state == self.STATE_STREAMING:
+				pkt = packet_out(self.out_frame_id, self.PROTOCOL_CTRL_PKT, 1, 1, 0, 1, self.PROTOCOL_STREAM_KEEPALIVE)
+				self.out_pkt_list.append(pkt)
+			time.sleep(self.KEEPALIVE_INTERVAL)
+
+	def conn_timeout_thread(self):
+		while True:
+			if self.state == self.STATE_STREAMING:
+				if self.pkt_recved == 0:
+					self.state = self.STATE_IDLE
+					print("conn timeout")
+				self.pkt_recved = 0 
+			time.sleep(self.CONN_TIMEOUT_INTERVAL)
 	
 	def is_camera(self, addr, port):
 		return (addr == self.addr) and (port == self.port)
 
 	def recv_pkt(self, pkt):
-		# print(type(PROTOCOL_PKT_TYPE.PROTOCOL_DATA_PKT) + type(pkt.type))
-		if pkt.type == PROTOCOL_DATA_PKT:
+		if (self.state == self.STATE_STREAMING):
+			self.pkt_recved = 1 
+
 			for frame_item in self.frame_list:
 				if frame_item.is_part_of_frame(pkt):
 					if frame_item.add_packet(pkt):
 						return True
 			new_frame = frame(pkt) 
 			self.frame_list.insert(new_frame.id, new_frame)
-		#else if control packet
-		return True
+			return True
+		else: 
+			return False 
 
 	def get_frame(self):
 		for frame_item in self.frame_list:
@@ -116,13 +147,36 @@ class camera:
 					break 
 		return False 
 
+	def stream_rqst(self):
+		if self.state == self.STATE_IDLE:
+			self.state = self.STATE_STREAMING
+			pkt = packet_out(self.out_frame_id, self.PROTOCOL_CTRL_PKT, 1, 1, 0, 1, self.PROTOCOL_STREAM_RQST)
+			self.out_pkt_list.append(pkt)
+			self.pkt_recved = 0 
+
+		else:
+			print("Invalid state")
+		#send stream rqst to camera 
+
+	def stream_stop(self):
+		if self.state == self.STATE_STREAMING:
+			self.state = self.STATE_IDLE
+			pkt = packet_out(self.out_frame_id, self.PROTOCOL_CTRL_PKT, 1, 1, 0, 1, self.PROTOCOL_STREAM_STOP)
+			self.out_pkt_list.append(pkt)
+			self.pkt_recved = 0 
+
+	def get_outbound_pkt(self):
+		if (len(self.out_pkt_list) > 0): 
+			return self.out_pkt_list.pop(0)
+		else:
+			return
+
+	def is_streaming(self):
+		return (self.state == self.STATE_STREAMING)
+
+
 		
 
 
 
 	
-	
-	
-	
-
-
