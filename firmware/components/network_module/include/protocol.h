@@ -28,12 +28,12 @@ typedef enum
 
 typedef enum
 {
-	PROTOCOL_CONNECT_RQST = 0xF,
-	PROTOCOL_DISCONNECT_RQST,
-	PROTOCOL_CONNECTED,
-	PROTOCOL_STREAM_RQST,
+//	PROTOCOL_CONNECT_RQST = 0xF,
+//	PROTOCOL_DISCONNECT_RQST,
+//	PROTOCOL_CONNECTED,
+	PROTOCOL_STREAM_RQST = 0xF,
 	PROTOCOL_STREAM_STOP,
-	PROTOCOL_STREAMING
+	PROTOCOL_STREAM_KEEPALIVE
 } protocol_ctrl_payload_t;
 
 typedef enum
@@ -57,18 +57,18 @@ typedef union
 		uint8_t frame_type;
 		uint8_t total_packets;
 		uint8_t pkt_sequence;
-		int64_t local_timestamp_ms; //only updated for new frame
 		uint32_t payload_len;
+		int64_t local_timestamp_ms; //only updated for new frame
 	};
 	uint8_t val [PROTOCOL_HEADER_SIZE];
 } protocol_packet_hdr_t;
 
-esp_err_t protocol_session_init(protocol_init_t * init);
-
-esp_err_t protocol_send_data(void * buf, uint32_t len);
-
-esp_err_t protocol_send_ctrl(protocol_ctrl_payload_t ctrl);
-
-int protocol_recv_ctrl (void ** buf);
+//esp_err_t protocol_session_init(protocol_init_t * init);
+//
+//esp_err_t protocol_send_data(void * buf, uint32_t len);
+//
+//esp_err_t protocol_send_ctrl(protocol_ctrl_payload_t ctrl);
+//
+//int protocol_recv_ctrl (void ** buf);
 
 #endif
